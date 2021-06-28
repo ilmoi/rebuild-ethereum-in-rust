@@ -1,3 +1,5 @@
+#![allow(illegal_floating_point_literal_pattern)]
+
 use float_cmp::approx_eq;
 use float_ord::FloatOrd;
 use std::cmp::Ordering;
@@ -114,7 +116,7 @@ impl Interpreter {
         let destination = self.stack.pop().unwrap();
         let destination = extract_val_from_opcode(&destination).unwrap() as usize;
 
-        if destination < 0 || destination > self.code.len() {
+        if destination > self.code.len() {
             panic!(
                 "trying to jump to non-existent destination, {}",
                 destination
@@ -235,7 +237,7 @@ mod tests {
     fn test_bad_push() {
         let mut i = Interpreter::new();
         let code = vec![OPCODE::PUSH, OPCODE::VAL(10.0), OPCODE::PUSH];
-        let r = i.run_code(code);
+        let _r = i.run_code(code);
     }
 
     #[test]
@@ -502,7 +504,7 @@ mod tests {
     fn test_bad_jump() {
         let mut i = Interpreter::new();
         let code = vec![OPCODE::PUSH, OPCODE::VAL(99.0), OPCODE::JUMP];
-        let r = i.run_code(code);
+        let _r = i.run_code(code);
     }
 
     #[test]

@@ -1,18 +1,18 @@
-const STOP = 'STOP';
-const ADD = 'ADD';
-const SUB = 'SUB';
-const MUL = 'MUL';
-const DIV = 'DIV';
-const PUSH = 'PUSH';
-const LT = 'LT'; //less than
-const GT = 'GT'; //greater than
-const EQ = 'EQ'; //equality
-const AND = 'AND';
-const OR = 'OR';
-const JUMP = 'JUMP'; //pops the destination and move the pc there
-const JUMPI = 'JUMPI'; //jumps conditionally (if)
-const STORE = 'STORE';
-const LOAD = 'LOAD';
+// const STOP = 'STOP';
+// const ADD = 'ADD';
+// const SUB = 'SUB';
+// const MUL = 'MUL';
+// const DIV = 'DIV';
+// const PUSH = 'PUSH';
+// const LT = 'LT'; //less than
+// const GT = 'GT'; //greater than
+// const EQ = 'EQ'; //equality
+// const AND = 'AND';
+// const OR = 'OR';
+// const JUMP = 'JUMP'; //pops the destination and move the pc there
+// const JUMPI = 'JUMPI'; //jumps conditionally (if)
+// const STORE = 'STORE';
+// const LOAD = 'LOAD';
 
 const OPCODE_MAP = {
   STOP,
@@ -50,55 +50,55 @@ const OPCODE_GAS_MAP = {
   LOAD: 5
 };
 
-const EXECUTION_COMPLETE = 'Execution complete';
-const EXECUTION_LIMIT = 10000;
+// const EXECUTION_COMPLETE = 'Execution complete';
+// const EXECUTION_LIMIT = 10000;
 
 class Interpreter {
   constructor({ storageTrie } = {}) {
-    this.state = {
-      programCounter: 0,
-      stack: [],
-      code: [],
-      executionCount: 0
-    };
+    // this.state = {
+    //   programCounter: 0,
+    //   stack: [],
+    //   code: [],
+    //   executionCount: 0
+    // };
     this.storageTrie = storageTrie;
   }
 
-  jump() {
-    //pop the last value
-    const destination = this.state.stack.pop();
-
-    //defensive prog
-    if (
-      destination < 0
-      || destination > this.state.code.length
-    ) {
-      throw new Error(`Invalid destination: ${destination}`);
-    }
-
-    this.state.programCounter = destination;
-    //must do a decrement coz we're doing an increment at the end of the loop (so this is a counter)
-    this.state.programCounter--;
-  }
+  // jump() {
+  //   //pop the last value
+  //   const destination = this.state.stack.pop();
+  //
+  //   //defensive prog
+  //   if (
+  //     destination < 0
+  //     || destination > this.state.code.length
+  //   ) {
+  //     throw new Error(`Invalid destination: ${destination}`);
+  //   }
+  //
+  //   this.state.programCounter = destination;
+  //   //must do a decrement coz we're doing an increment at the end of the loop (so this is a counter)
+  //   this.state.programCounter--;
+  // }
 
   runCode(code) {
-    this.state.code = code;
+    // this.state.code = code;
 
     let gasUsed = 0;
 
     while (this.state.programCounter < this.state.code.length) {
       //needed to prevent execution from running forever - we're making sure below 10k operations
-      this.state.executionCount++;
+      // this.state.executionCount++;
 
       // defensive prog
-      if (this.state.executionCount > EXECUTION_LIMIT) {
-        throw new Error(
-          `Check for an infinite loop. Execution limit of ${EXECUTION_LIMIT} exceeded`
-        );
-      }
+      // if (this.state.executionCount > EXECUTION_LIMIT) {
+      //   throw new Error(
+      //     `Check for an infinite loop. Execution limit of ${EXECUTION_LIMIT} exceeded`
+      //   );
+      // }
 
       //opcode = instruction
-      const opCode = this.state.code[this.state.programCounter];
+      // const opCode = this.state.code[this.state.programCounter];
 
       gasUsed += OPCODE_GAS_MAP[opCode];
 
@@ -108,59 +108,59 @@ class Interpreter {
       //surround with a try statement to know when execution finished and we can remove the value from the stack
       try {
         switch (opCode) {
-          case STOP:
-            throw new Error(EXECUTION_COMPLETE);
-          case PUSH:
-            //since we're taking the next instruction in the code array, we first need to increment the counter
-            this.state.programCounter++;
-            //defensive prog
-            if (this.state.programCounter === this.state.code.length) {
-              throw new Error(`The 'PUSH' instruction cannot be last.`);
-            }
-            //grab next value
-            value = this.state.code[this.state.programCounter];
-            //push it onto the stack
-            this.state.stack.push(value);
-            break;
-          case ADD:
-          case SUB:
-          case MUL:
-          case DIV:
-          case LT:
-          case GT:
-          case EQ:
-          case AND:
-          case OR:
-            const a = this.state.stack.pop();
-            const b = this.state.stack.pop();
-
-            let result;
-
-            if (opCode === ADD) result = a + b;
-            if (opCode === SUB) result = a - b;
-            if (opCode === MUL) result = a * b;
-            if (opCode === DIV) result = a / b;
-            // this is how you do conditionals - we eval the expr and then push either a 1 or a 0 onto the stack (1 = true, 0 = false)
-            if (opCode === LT) result = a < b ? 1 : 0;
-            if (opCode === GT) result = a > b ? 1 : 0;
-            if (opCode === EQ) result = a === b ? 1 : 0;
-            // for these two a 1 or a 0 should already be on the stack, because we're combining a previous condition with a new one
-            if (opCode === AND) result = a && b;
-            if (opCode === OR) result = a || b;
-
-            this.state.stack.push(result);
-            break;
-          case JUMP:
-            this.jump();
-            break;
-          case JUMPI:
-            const condition = this.state.stack.pop();
-
-            // requires that the last value on the stack is a 1
-            if (condition === 1) {
-              this.jump();
-            }
-            break;
+          // case STOP:
+          //   throw new Error(EXECUTION_COMPLETE);
+          // case PUSH:
+          //   //since we're taking the next instruction in the code array, we first need to increment the counter
+          //   this.state.programCounter++;
+          //   //defensive prog
+          //   if (this.state.programCounter === this.state.code.length) {
+          //     throw new Error(`The 'PUSH' instruction cannot be last.`);
+          //   }
+          //   //grab next value
+          //   value = this.state.code[this.state.programCounter];
+          //   //push it onto the stack
+          //   this.state.stack.push(value);
+          //   break;
+          // case ADD:
+          // case SUB:
+          // case MUL:
+          // case DIV:
+          // case LT:
+          // case GT:
+          // case EQ:
+          // case AND:
+          // case OR:
+          //   const a = this.state.stack.pop();
+          //   const b = this.state.stack.pop();
+          //
+          //   let result;
+          //
+          //   if (opCode === ADD) result = a + b;
+          //   if (opCode === SUB) result = a - b;
+          //   if (opCode === MUL) result = a * b;
+          //   if (opCode === DIV) result = a / b;
+          //   // this is how you do conditionals - we eval the expr and then push either a 1 or a 0 onto the stack (1 = true, 0 = false)
+          //   if (opCode === LT) result = a < b ? 1 : 0;
+          //   if (opCode === GT) result = a > b ? 1 : 0;
+          //   if (opCode === EQ) result = a === b ? 1 : 0;
+          //   // for these two a 1 or a 0 should already be on the stack, because we're combining a previous condition with a new one
+          //   if (opCode === AND) result = a && b;
+          //   if (opCode === OR) result = a || b;
+          //
+          //   this.state.stack.push(result);
+          //   break;
+          // case JUMP:
+          //   this.jump();
+          //   break;
+          // case JUMPI:
+          //   const condition = this.state.stack.pop();
+          //
+          //   // requires that the last value on the stack is a 1
+          //   if (condition === 1) {
+          //     this.jump();
+          //   }
+          //   break;
           case STORE:
             key = this.state.stack.pop();
             value = this.state.stack.pop();
@@ -175,27 +175,27 @@ class Interpreter {
             this.state.stack.push(value);
 
             break;
-          default:
-            break;
+          // default:
+          //   break;
         }
-      } catch (error) {
-        if (error.message === EXECUTION_COMPLETE) {
-          return {
-            result: this.state.stack[this.state.stack.length-1],
-            gasUsed
-          };
-        }
-
-        throw error;
-      }
-
-      this.state.programCounter++;
+      // } catch (error) {
+      //   if (error.message === EXECUTION_COMPLETE) {
+      //     return {
+      //       result: this.state.stack[this.state.stack.length-1],
+      //       gasUsed
+      //     };
+      //   }
+      //
+      //   throw error;
+      // }
+      //
+      // this.state.programCounter++;
     }
   }
 }
 
 Interpreter.OPCODE_MAP = OPCODE_MAP;
-module.exports = Interpreter;
+// module.exports = Interpreter;
 
 // let code = [PUSH, 2, PUSH, 3, ADD, STOP];
 // let result = new Interpreter().runCode(code);
