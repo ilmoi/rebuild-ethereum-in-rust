@@ -2,6 +2,14 @@ POST http://localhost:8080/transact
 Content-Type: application/json
 
 {
-  "value": 123,
-  "to": "02a8a48d9ade60322218e1f73be522500fe7fe7c032765aa41244ba64b331c0f59"
+  "value": 222,
+  "to": "03464c2df6d27a35dee160ab697eaeef060b79688998e4116f6f00b95fb82447f7"
 }
+
+###
+
+GET http://localhost:8080/balance/034e69aec55aa5796023ce324656a97e64e4046925a757eaec5660f932775769bd
+
+###
+
+GET http://localhost:8080/mine

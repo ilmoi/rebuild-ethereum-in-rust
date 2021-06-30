@@ -11,6 +11,7 @@ pub struct TransactionQueue {
 impl TransactionQueue {
     pub fn new() -> Self {
         Self {
+            //using a hashmap instead of a array for deduplication using keys
             tx_map: HashMap::new(),
         }
     }

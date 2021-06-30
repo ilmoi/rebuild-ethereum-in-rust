@@ -68,21 +68,21 @@ class Transaction {
       //   return reject(new Error(`Transaction ${id} signature is invalid`));
       // }
 
-      const fromBalance = state.getAccount({ address: from }).balance;
-
+      // const fromBalance = state.getAccount({ address: from }).balance;
+      //
       if ((value + gasLimit) > fromBalance) {
-        return reject(new Error(
-          `Transaction value and gasLimit: ${value} exceeds balance: ${fromBalance}`
-        ));
-      }
+      //   return reject(new Error(
+      //     `Transaction value and gasLimit: ${value} exceeds balance: ${fromBalance}`
+      //   ));
+      // }
 
-      const toAccount = state.getAccount({ address: to });
-
-      if (!toAccount) {
-        return reject(new Error(
-          `The to field: ${to} does not exist`
-        ));
-      }
+      // const toAccount = state.getAccount({ address: to });
+      //
+      // if (!toAccount) {
+      //   return reject(new Error(
+      //     `The to field: ${to} does not exist`
+      //   ));
+      // }
 
       if (toAccount.codeHash) {
         const { gasUsed } = new Interpreter({
@@ -96,9 +96,9 @@ class Transaction {
         }
       }
 
-      return resolve();
-    });
-  }
+      // return resolve();
+    // });
+  // }
 
   // static validateCreateAccountTransaction({ transaction }) {
   //   return new Promise((resolve, reject) => {
@@ -138,7 +138,7 @@ class Transaction {
   //   });
   // }
 
-  static validateTransactionSeries({ transactionSeries, state }) {
+  // static validateTransactionSeries({ transactionSeries, state }) {
     // return new Promise(async (resolve, reject) => {
     //   for (let transaction of transactionSeries) {
     //     try {
@@ -170,32 +170,32 @@ class Transaction {
       //
       // return resolve();
     // });
-  }
+  // }
 
-  static runTransaction({ state, transaction }) {
-    switch(transaction.data.type) {
-      case TRANSACTION_TYPE_MAP.TRANSACT:
-        Transaction.runStandardTransaction({ state, transaction });
-        console.log(
-          ' -- Updated account data to reflect the standard transaction'
-        );
-        break;
-      case TRANSACTION_TYPE_MAP.CREATE_ACCOUNT:
-        Transaction.runCreateAccountTransaction({ state, transaction });
-        console.log(' -- Stored the account data');
-        break;
-      case TRANSACTION_TYPE_MAP.MINING_REWARD:
-        Transaction.runMiningRewardTransaction({ state, transaction });
-        console.log(' -- Updated account data to reflect the mining reward');
-        break;
-      default:
-        break;
-    }
-  }
+  // static runTransaction({ state, transaction }) {
+  //   switch(transaction.data.type) {
+  //     case TRANSACTION_TYPE_MAP.TRANSACT:
+  //       Transaction.runStandardTransaction({ state, transaction });
+  //       console.log(
+  //         ' -- Updated account data to reflect the standard transaction'
+  //       );
+  //       break;
+  //     case TRANSACTION_TYPE_MAP.CREATE_ACCOUNT:
+  //       Transaction.runCreateAccountTransaction({ state, transaction });
+  //       console.log(' -- Stored the account data');
+  //       break;
+  //     case TRANSACTION_TYPE_MAP.MINING_REWARD:
+  //       Transaction.runMiningRewardTransaction({ state, transaction });
+  //       console.log(' -- Updated account data to reflect the mining reward');
+  //       break;
+  //     default:
+  //       break;
+  //   }
+  // }
 
   static runStandardTransaction({ state, transaction }) {
-    const fromAccount = state.getAccount({ address: transaction.from });
-    const toAccount = state.getAccount({ address: transaction.to });
+    // const fromAccount = state.getAccount({ address: transaction.from });
+    // const toAccount = state.getAccount({ address: transaction.to });
 
     let gasUsed = 0;
     let result;
@@ -214,31 +214,31 @@ class Transaction {
     const { value, gasLimit } = transaction;
     const refund = gasLimit - gasUsed;
 
-    fromAccount.balance -= value;
+    // fromAccount.balance -= value;
     fromAccount.balance -= gasLimit;
     fromAccount.balance += refund;
-    toAccount.balance += value;
+    // toAccount.balance += value;
     toAccount.balance += gasUsed;
 
-    state.putAccount({ address: transaction.from, accountData: fromAccount });
-    state.putAccount({ address: transaction.to, accountData: toAccount });
+    // state.putAccount({ address: transaction.from, accountData: fromAccount });
+    // state.putAccount({ address: transaction.to, accountData: toAccount });
   }
 
   static runCreateAccountTransaction({ state, transaction }) {
-    const { accountData } = transaction.data;
+    // const { accountData } = transaction.data;
     const { address, codeHash } = accountData;
 
     state.putAccount({ address: codeHash ? codeHash : address, accountData });
   }
 
-  static runMiningRewardTransaction({ state, transaction }) {
-    const { to, value } = transaction;
-    const accountData = state.getAccount({ address: to });
+  // static runMiningRewardTransaction({ state, transaction }) {
+    // const { to, value } = transaction;
+    // const accountData = state.getAccount({ address: to });
 
-    accountData.balance += value;
+    // accountData.balance += value;
 
-    state.putAccount({ address: to, accountData });
-  }
+    // state.putAccount({ address: to, accountData });
+  // }
 }
 
 module.exports = Transaction;

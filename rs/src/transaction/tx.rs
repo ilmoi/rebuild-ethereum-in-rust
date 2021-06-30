@@ -4,8 +4,10 @@ use uuid::Uuid;
 
 use crate::account::{Account, PublicAccount};
 use crate::interpreter::OPCODE;
+use crate::store::state::State;
+use std::cmp::Ordering;
 
-const MINING_REWARD: u64 = 0;
+pub const MINING_REWARD: u64 = 50;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub enum TxType {
@@ -96,7 +98,7 @@ impl Transaction {
         }
     }
 
-    pub fn validate_transaction(tx: &Transaction) -> bool {
+    pub fn validate_transaction(tx: &Transaction, state: &mut State) -> bool {
         let serialized_tx = serde_json::to_string(&tx.unsigned_tx).unwrap();
         let public_key = &tx.unsigned_tx.from.unwrap();
         let sig = &tx.signature.unwrap();
@@ -106,11 +108,18 @@ impl Transaction {
             return false;
         };
 
+        let mut from_account = state.get_account(tx.unsigned_tx.from.unwrap());
+        if tx.unsigned_tx.value > from_account.balance {
+            println!("exceeded balance");
+            return false;
+        }
+
         true
     }
 
     pub fn validate_create_account_transaction(_tx: &Transaction) -> bool {
-        //the tests written in js are not necessary in rust due to static typing
+        //NOTE1: the tests written in js are not necessary in rust due to static typing
+        //NOTE2: can't run signature verification because "from" field is empty
         true
     }
 
@@ -122,11 +131,11 @@ impl Transaction {
         true
     }
 
-    pub fn validate_transaction_series(tx_series: &Vec<Transaction>) -> bool {
+    pub fn validate_transaction_series(tx_series: &Vec<Transaction>, state: &mut State) -> bool {
         for tx in tx_series {
             let is_valid = match tx.unsigned_tx.data.tx_type {
                 TxType::MiningReward => Transaction::validate_mining_reward_transaction(tx),
-                TxType::Transact => Transaction::validate_transaction(tx),
+                TxType::Transact => Transaction::validate_transaction(tx, state),
                 TxType::CreateAccount => Transaction::validate_create_account_transaction(tx),
             };
             //if at least 1 tx fails, then the entire series fails and we return false
@@ -135,5 +144,39 @@ impl Transaction {
             }
         }
         true
+    }
+
+    pub fn run_transaction(tx: &Transaction, state: &mut State) {
+        match tx.unsigned_tx.data.tx_type {
+            TxType::MiningReward => Transaction::run_mining_tx(tx, state),
+            TxType::Transact => Transaction::run_standard_tx(tx, state),
+            TxType::CreateAccount => Transaction::run_create_account_tx(tx, state),
+        }
+    }
+
+    pub fn run_mining_tx(tx: &Transaction, state: &mut State) {
+        let to = tx.unsigned_tx.to.unwrap();
+        let value = tx.unsigned_tx.value;
+        let mut account = state.get_account(to);
+
+        account.balance += value;
+
+        state.put_account(account.address, account);
+    }
+
+    pub fn run_standard_tx(tx: &Transaction, state: &mut State) {
+        let mut from_account = state.get_account(tx.unsigned_tx.from.unwrap());
+        let mut to_account = state.get_account(tx.unsigned_tx.to.unwrap());
+
+        from_account.balance -= tx.unsigned_tx.value;
+        to_account.balance += tx.unsigned_tx.value;
+
+        state.put_account(from_account.address, from_account);
+        state.put_account(to_account.address, to_account);
+    }
+
+    pub fn run_create_account_tx(tx: &Transaction, state: &mut State) {
+        let account_data = tx.unsigned_tx.data.account_data.clone().unwrap();
+        state.put_account(account_data.address, account_data);
     }
 }

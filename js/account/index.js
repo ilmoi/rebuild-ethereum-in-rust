@@ -1,7 +1,7 @@
-const { ec, keccakHash } = require('../util');
-const { STARTING_BALANCE } = require('../config');
+// const { ec, keccakHash } = require('../util');
+// const { STARTING_BALANCE } = require('../config');
 
-class Account {
+// class Account {
   // constructor({ code } = {}) {
     // this.keyPair = ec.genKeyPair();
     // this.address = this.keyPair.getPublic().encode('hex');
@@ -35,9 +35,10 @@ class Account {
   //   return keyFromPublic.verify(keccakHash(data), signature);
   // }
 
-  static calculateBalance({ address, state }) {
-    return state.getAccount({ address }).balance;
-  }
-}
+  // static calculateBalance({ address, state }) {
+  //   return state.getAccount({ address }).balance;
+  // }
+// }
 
-module.exports = Account;
+// module.exports = Account;
+//

@@ -9,10 +9,10 @@ const State = require('../store/state');
 const Transaction = require('../transaction');
 const TransactionQueue = require('../transaction/transaction-queue');
 
-const app = express();
-app.use(bodyParser.json());
+// const app = express();
+// app.use(bodyParser.json());
 
-const state = new State();
+// const state = new State();
 // const blockchain = new Blockchain({ state });
 // const transactionQueue = new TransactionQueue();
 // const pubsub = new PubSub({ blockchain, transactionQueue });
@@ -29,14 +29,14 @@ const state = new State();
 //   res.json({ chain });
 // });
 
-app.get('/blockchain/mine', (req, res, next) => {
+// app.get('/blockchain/mine', (req, res, next) => {
   // const lastBlock = blockchain.chain[blockchain.chain.length-1];
   // const block = Block.mineBlock({
   //   lastBlock,
   //   beneficiary: account.address,
   //   transactionSeries: transactionQueue.getTransactionSeries(),
-    stateRoot: state.getStateRoot()
-  });
+  //   stateRoot: state.getStateRoot()
+  // });
 
   // blockchain.addBlock({ block, transactionQueue })
   //   .then(() => {
@@ -61,16 +61,16 @@ app.get('/blockchain/mine', (req, res, next) => {
 //   res.json({ transaction });
 // });
 
-app.get('/account/balance', (req, res, next) => {
-  const { address } = req.query;
-
-  const balance = Account.calculateBalance({
-    address: address || account.address,
-    state
-  });
-
-  res.json({ balance });
-});
+// app.get('/account/balance', (req, res, next) => {
+//   const { address } = req.query;
+//
+//   const balance = Account.calculateBalance({
+//     address: address || account.address,
+//     state
+//   });
+//
+//   res.json({ balance });
+// });
 
 // app.use((err, req, res, next) => {
 //   console.error('Internal server error:', err);

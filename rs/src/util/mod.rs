@@ -1,6 +1,7 @@
 use crate::account::Account;
 use crate::blockchain::block::U256;
 use crate::blockchain::blockchain::Blockchain;
+use crate::store::state::State;
 use crate::transaction::tx::Transaction;
 use crate::transaction::tx_queue::TransactionQueue;
 use itertools::Itertools;
@@ -16,15 +17,21 @@ pub struct GlobalState {
 }
 
 pub fn prep_state() -> GlobalState {
+    println!("MINER ACCOUNT: ");
     let miner_account = Account::new(vec![]);
-    let tx = Transaction::create_transaction(Some(miner_account), None, 0, None);
+    println!("SECOND TEST ACCOUNT: ");
+    let second_test_account = Account::new(vec![]);
+
+    let tx = Transaction::create_transaction(Some(miner_account.clone()), None, 0, None);
+    let tx2 = Transaction::create_transaction(Some(second_test_account), None, 0, None);
 
     let mut global_state = GlobalState {
-        blockchain: Blockchain::new(),
+        blockchain: Blockchain::new(State::new()),
         tx_queue: TransactionQueue::new(),
-        miner_account: Account::new(vec![]),
+        miner_account,
     };
     global_state.tx_queue.add(tx);
+    global_state.tx_queue.add(tx2);
 
     global_state
 }

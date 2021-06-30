@@ -1,5 +1,7 @@
 use crate::account::gen_keypair;
-use crate::transaction::tx::Transaction;
+use crate::store::state::State;
+use crate::store::trie::Trie;
+use crate::transaction::tx::{Transaction, MINING_REWARD};
 use crate::util::{base10_to_base16, base16_to_base10, keccak_hash};
 use chrono::{Duration, Utc};
 use lazy_static::lazy_static;
@@ -37,7 +39,8 @@ pub struct TruncatedBlockHeaders {
     pub difficulty: i64,
     pub number: usize,
     pub timestamp: i64,
-    //todo missing transactions_root
+    pub tx_root: String,
+    pub state_root: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -68,6 +71,8 @@ impl Block {
             difficulty: 1,
             number: 0,
             timestamp: (Utc::now() - Duration::seconds(30)).timestamp_millis(), //(!) keep this above 15s for tests
+            tx_root: String::from("NONE"),
+            state_root: String::from("NONE"),
         };
         let bh = BlockHeaders {
             truncated_block_headers: tbh,
@@ -106,10 +111,18 @@ impl Block {
     pub fn mine_block(
         last_block: &Block,
         beneficiary: PublicKey,
-        tx_series: Vec<Transaction>,
+        mut tx_series: Vec<Transaction>,
+        state_root: &String,
     ) -> Self {
         let target = Block::calc_block_target_hash(last_block);
         let timestamp = Utc::now().timestamp_millis(); //in milliseconds specifically
+
+        //include mining tx before we build the trie
+        let mining_tx =
+            Transaction::create_transaction(None, None, MINING_REWARD, Some(beneficiary));
+        tx_series.push(mining_tx);
+
+        let tx_trie = Trie::build_trie(tx_series.clone());
 
         let mut truncated_block_headers;
         let mut nonce;
@@ -120,6 +133,8 @@ impl Block {
                 difficulty: Block::adjust_difficulty(last_block, timestamp),
                 number: last_block.block_headers.truncated_block_headers.number + 1,
                 timestamp,
+                tx_root: tx_trie.root_hash.clone(),
+                state_root: state_root.clone(),
             };
             let truncated_header_hash = keccak_hash(&truncated_block_headers);
             nonce = rand::random::<u128>();
@@ -141,7 +156,7 @@ impl Block {
         }
     }
 
-    pub fn validate_block(last_block: &Block, this_block: &Block) -> bool {
+    pub fn validate_block(last_block: &Block, this_block: &Block, state: &mut State) -> bool {
         // if it's the genesis block, then it's by defn valid
         if keccak_hash(this_block) == keccak_hash(&Block::genesis()) {
             return true;
@@ -170,7 +185,6 @@ impl Block {
             return false;
         }
 
-        //most important check
         let target = Block::calc_block_target_hash(last_block);
         let rehashed_tbh = keccak_hash(&this_block.block_headers.truncated_block_headers);
         let rehashed_bh = keccak_hash(&format!(
@@ -182,12 +196,24 @@ impl Block {
             return false;
         }
 
-        //tx series
-        if !Transaction::validate_transaction_series(&this_block.tx_series) {
+        if !Transaction::validate_transaction_series(&this_block.tx_series, state) {
+            return false;
+        }
+
+        let rebuilt_tx_trie = Trie::build_trie(this_block.tx_series.clone());
+
+        if rebuilt_tx_trie.root_hash != this_block.block_headers.truncated_block_headers.tx_root {
+            println!("transaction root hash doesn't match");
             return false;
         }
 
         true
+    }
+
+    pub fn run_block(block: &Block, state: &mut State) {
+        for tx in &block.tx_series {
+            Transaction::run_transaction(&tx, state);
+        }
     }
 }
 
@@ -199,14 +225,14 @@ mod tests {
 
     #[test]
     fn test_difficulty_down() {
-        let b = Block::mine_block(&Block::genesis(), gen_keypair().1);
+        let b = Block::mine_block(&Block::genesis(), gen_keypair().1, vec![], &"".into());
         assert_eq!(b.block_headers.truncated_block_headers.difficulty, 1);
     }
 
     #[test]
     fn test_difficulty_up() {
-        let b = Block::mine_block(&Block::genesis(), gen_keypair().1);
-        let b = Block::mine_block(&b, gen_keypair().1);
+        let b = Block::mine_block(&Block::genesis(), gen_keypair().1, vec![], &"".into());
+        let b = Block::mine_block(&b, gen_keypair().1, vec![], &"".into());
         assert_eq!(b.block_headers.truncated_block_headers.difficulty, 2);
     }
 
@@ -238,13 +264,13 @@ mod tests {
     fn test_high_difficulty() {
         let mut last_block = Block::genesis();
         last_block.block_headers.truncated_block_headers.difficulty = 1000000;
-        let b = Block::mine_block(&last_block, gen_keypair().1);
+        let b = Block::mine_block(&last_block, gen_keypair().1, vec![], &"".into());
     }
 
     #[test]
     fn test_bad_hash() {
         let last_block = Block::genesis();
-        let mut b = Block::mine_block(&last_block, gen_keypair().1);
+        let mut b = Block::mine_block(&last_block, gen_keypair().1, vec![], &"".into());
         b.block_headers.truncated_block_headers.parent_hash = "this-is-clearly-wrong".into();
         assert_eq!(false, Block::validate_block(&last_block, &b));
     }
@@ -252,7 +278,7 @@ mod tests {
     #[test]
     fn test_good_hash() {
         let last_block = Block::genesis();
-        let b = Block::mine_block(&last_block, gen_keypair().1);
+        let b = Block::mine_block(&last_block, gen_keypair().1, vec![], &"".into());
         assert_eq!(true, Block::validate_block(&last_block, &b));
     }
 }

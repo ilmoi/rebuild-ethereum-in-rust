@@ -1,13 +1,13 @@
-const { GENESIS_DATA, MINE_RATE } = require('../config');
-const { keccakHash } = require('../util');
-const Transaction = require('../transaction');
-const Trie = require('../store/trie');
+// const { GENESIS_DATA, MINE_RATE } = require('../config');
+// const { keccakHash } = require('../util');
+// const Transaction = require('../transaction');
+// const Trie = require('../store/trie');
 
 // const HASH_LENGTH = 64;
 // const MAX_HASH_VALUE = parseInt('f'.repeat(HASH_LENGTH), 16);
 // const MAX_NONCE_VALUE = 2 ** 64;
 
-class Block {
+// class Block {
   // constructor({ blockHeaders, transactionSeries }) { // in ethereum block = headers + tx series
     // this.blockHeaders = blockHeaders;
     // this.transactionSeries = transactionSeries;
@@ -37,18 +37,18 @@ class Block {
   //   return difficulty + 1;
   // }
 
-  static mineBlock({
+  // static mineBlock({
     // lastBlock,
     // beneficiary,
     // transactionSeries,
-    stateRoot
+    // stateRoot
   }) {
     // const target = Block.calculateBlockTargetHash({ lastBlock });
-    const miningRewardTransaction = Transaction.createTransaction({
-      beneficiary
-    });
-    transactionSeries.push(miningRewardTransaction);
-    const transactionsTrie = Trie.buildTrie({ items: transactionSeries });
+    // const miningRewardTransaction = Transaction.createTransaction({
+    //   beneficiary
+    // });
+    // transactionSeries.push(miningRewardTransaction);
+    // const transactionsTrie = Trie.buildTrie({ items: transactionSeries });
     // let timestamp, truncatedBlockHeaders, header, nonce, underTargetHash;
 
     // do {
@@ -59,8 +59,8 @@ class Block {
       //   difficulty: Block.adjustDifficulty({ lastBlock, timestamp }),
       //   number: lastBlock.blockHeaders.number + 1,
       //   timestamp,
-        transactionsRoot: transactionsTrie.rootHash,
-        stateRoot
+      //   transactionsRoot: transactionsTrie.rootHash,
+        // stateRoot
       // };
       // header = keccakHash(truncatedBlockHeaders);
       // nonce = Math.floor(Math.random() * MAX_NONCE_VALUE);
@@ -79,8 +79,8 @@ class Block {
   //   return new Block(GENESIS_DATA);
   // }
 
-  static validateBlock({ lastBlock, block, state }) {
-    return new Promise((resolve, reject) => {
+  // static validateBlock({ lastBlock, block, state }) {
+  //   return new Promise((resolve, reject) => {
       // if (keccakHash(block) === keccakHash(Block.genesis())) { //first thing check if it's the genesis block, in which case we resolve straight away
       //   return resolve();
       // }
@@ -101,18 +101,18 @@ class Block {
       //   return reject(new Error('The difficulty must only adjust by 1'));
       // }
 
-      const rebuiltTransactionsTrie = Trie.buildTrie({
-        items: block.transactionSeries
-      });
+      // const rebuiltTransactionsTrie = Trie.buildTrie({
+      //   items: block.transactionSeries
+      // });
 
-      if (rebuiltTransactionsTrie.rootHash !== block.blockHeaders.transactionsRoot) {
-        return reject(
-          new Error(
-            `The rebuilt transactions root does not match the block's ` +
-            `transactions root: ${block.blockHeaders.transactionRoot}`
-          )
-        );
-      }
+      // if (rebuiltTransactionsTrie.rootHash !== block.blockHeaders.transactionsRoot) {
+      //   return reject(
+      //     new Error(
+      //       `The rebuilt transactions root does not match the block's ` +
+      //       `transactions root: ${block.blockHeaders.transactionRoot}`
+      //     )
+      //   );
+      // }
 
       // const target = Block.calculateBlockTargetHash({ lastBlock });
       // const { blockHeaders } = block;
@@ -135,11 +135,11 @@ class Block {
     // });
   // }
 
-  static runBlock({ block, state }) {
-    for (let transaction of block.transactionSeries) {
-      Transaction.runTransaction({ transaction, state });
-    }
-  }
-}
+  // static runBlock({ block, state }) {
+  //   for (let transaction of block.transactionSeries) {
+  //     Transaction.runTransaction({ transaction, state });
+  //   }
+  // }
+// }
 
-module.exports = Block;
+// module.exports = Block;

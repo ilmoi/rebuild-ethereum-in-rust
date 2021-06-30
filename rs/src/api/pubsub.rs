@@ -114,6 +114,7 @@ pub fn process_block(block: String, global_state: Arc<Mutex<GlobalState>>) {
 }
 
 pub fn process_transaction(transaction: String, global_state: Arc<Mutex<GlobalState>>) {
+    println!("received tx: {:?}", transaction);
     let tx_object: Transaction = serde_json::from_str(&transaction).unwrap();
     println!("deserialized tx: {:?}", tx_object);
 

@@ -1,4 +1,5 @@
 use crate::interpreter::OPCODE;
+use crate::store::state::State;
 use crate::util::keccak_hash;
 use secp256k1::bitcoin_hashes::hex::ToHex;
 use secp256k1::bitcoin_hashes::sha256;
@@ -24,6 +25,10 @@ impl Account {
     //note code can be empty: vec![]
     pub fn new(code: Vec<OPCODE>) -> Self {
         let (secret_key, public_key) = gen_keypair();
+        println!(
+            "Created new account with sk, pk: {}, {}",
+            secret_key, public_key
+        );
         let code_hash = Account::gen_code_hash(&public_key, &code);
         Self {
             secret_key,
@@ -35,6 +40,7 @@ impl Account {
             },
         }
     }
+    //todo purpose of code hash?
     pub fn gen_code_hash(address: &PublicKey, code: &Vec<OPCODE>) -> Option<String> {
         if code.len() > 0 {
             Some(keccak_hash(&format!("{}{:?}", address, code)))
@@ -42,6 +48,7 @@ impl Account {
             None
         }
     }
+    /// used to sign transactions coming from this account
     pub fn sign(&self, data: &String) -> Signature {
         let secp = Secp256k1::new();
         let msg = Message::from_hashed_data::<sha256::Hash>(data.as_bytes());
@@ -51,6 +58,10 @@ impl Account {
         let msg = Message::from_hashed_data::<sha256::Hash>(data.as_bytes());
         let secp = Secp256k1::new();
         secp.verify(&msg, sig, public_key).is_ok()
+    }
+    pub fn get_balance(address: PublicKey, state: &mut State) -> u64 {
+        let account = state.get_account(address);
+        account.balance
     }
 }
 
