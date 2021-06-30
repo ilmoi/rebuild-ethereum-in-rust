@@ -1,5 +1,5 @@
-const PubNub = require('pubnub');
-const Transaction = require('../transaction');
+// const PubNub = require('pubnub');
+// const Transaction = require('../transaction');
 
 // const credentials = {
 //   publishKey: 'pub-c-2a9a12fd-bd7e-45ae-9743-23f7909dd90f',
@@ -7,13 +7,13 @@ const Transaction = require('../transaction');
 //   secretKey: 'sec-c-MTE0NDA5NDctNGRkZC00YjFmLTgyOGUtOWRlYTM0YmRiNWRh'
 // };
 
-const CHANNELS_MAP = {
+// const CHANNELS_MAP = {
   // TEST: 'TEST',
   // BLOCK: 'BLOCK',
-  TRANSACTION: 'TRANSACTION'
-};
+  // TRANSACTION: 'TRANSACTION'
+// };
 
-class PubSub {
+// class PubSub {
   // constructor({ blockchain, transactionQueue }) {
   //   this.pubnub = new PubNub(credentials);
   //   this.blockchain = blockchain;
@@ -32,30 +32,30 @@ class PubSub {
   //   this.pubnub.publish({ channel, message });
   // }
 
-  listen() {
-    this.pubnub.addListener({
-      message: messageObject => {
+  // listen() {
+  //   this.pubnub.addListener({
+  //     message: messageObject => {
         // const { channel, message } = messageObject;
         // const parsedMessage = JSON.parse(message);
 
         // console.log('Message received. Channel:', channel);
 
-        switch (channel) {
+        // switch (channel) {
           // case CHANNELS_MAP.BLOCK:
           //   console.log('block message', message);
 
             // this.blockchain.addBlock({
             //   block: parsedMessage,
-              transactionQueue: this.transactionQueue
+            //   transactionQueue: this.transactionQueue
             // }).then(() => console.log('New block accepted', parsedMessage))
             //   .catch(error => console.error('New block rejected:', error.message));
             // break;
-          case CHANNELS_MAP.TRANSACTION:
-            console.log(`Received transaction: ${parsedMessage.id}`);
+          // case CHANNELS_MAP.TRANSACTION:
+          //   console.log(`Received transaction: ${parsedMessage.id}`);
 
-            this.transactionQueue.add(new Transaction(parsedMessage));
+            // this.transactionQueue.add(new Transaction(parsedMessage));
 
-            break;
+            // break;
           // default:
           //   return;
         // }
@@ -70,12 +70,12 @@ class PubSub {
   //   });
   // }
 
-  broadcastTransaction(transaction) {
-    this.publish({
-      channel: CHANNELS_MAP.TRANSACTION,
-      message: JSON.stringify(transaction)
-    });
-  }
-}
+  // broadcastTransaction(transaction) {
+  //   this.publish({
+  //     channel: CHANNELS_MAP.TRANSACTION,
+  //     message: JSON.stringify(transaction)
+  //   });
+  // }
+// }
 
-module.exports = PubSub;
+// module.exports = PubSub;

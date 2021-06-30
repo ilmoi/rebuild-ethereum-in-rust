@@ -14,14 +14,14 @@ app.use(bodyParser.json());
 
 const state = new State();
 // const blockchain = new Blockchain({ state });
-const transactionQueue = new TransactionQueue();
+// const transactionQueue = new TransactionQueue();
 // const pubsub = new PubSub({ blockchain, transactionQueue });
-const account = new Account();
-const transaction = Transaction.createTransaction({ account });
+// const account = new Account();
+// const transaction = Transaction.createTransaction({ account });
 
-setTimeout(() => {
-  pubsub.broadcastTransaction(transaction);
-}, 500);
+// setTimeout(() => {
+//   pubsub.broadcastTransaction(transaction);
+// }, 500);
 
 // app.get('/blockchain', (req, res, next) => {
 //   const { chain } = blockchain;
@@ -34,32 +34,32 @@ app.get('/blockchain/mine', (req, res, next) => {
   // const block = Block.mineBlock({
   //   lastBlock,
   //   beneficiary: account.address,
-    transactionSeries: transactionQueue.getTransactionSeries(),
+  //   transactionSeries: transactionQueue.getTransactionSeries(),
     stateRoot: state.getStateRoot()
   });
 
   // blockchain.addBlock({ block, transactionQueue })
   //   .then(() => {
-      pubsub.broadcastBlock(block);
+  //     pubsub.broadcastBlock(block);
 
       // res.json({ block });
     // })
     // .catch(next);
 // });
 
-app.post('/account/transact', (req, res, next) => {
-  const { code, gasLimit, to, value } = req.body;
-  const transaction = Transaction.createTransaction({
-    account: !to ? new Account({ code }) : account,
-    gasLimit,
-    to,
-    value
-  });
-
-  pubsub.broadcastTransaction(transaction);
-
-  res.json({ transaction });
-});
+// app.post('/account/transact', (req, res, next) => {
+//   const { code, gasLimit, to, value } = req.body;
+//   const transaction = Transaction.createTransaction({
+//     account: !to ? new Account({ code }) : account,
+//     gasLimit,
+//     to,
+//     value
+//   });
+//
+//   pubsub.broadcastTransaction(transaction);
+//
+//   res.json({ transaction });
+// });
 
 app.get('/account/balance', (req, res, next) => {
   const { address } = req.query;

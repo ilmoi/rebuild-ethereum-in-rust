@@ -5,38 +5,51 @@ extern crate lazy_static;
 extern crate uint;
 
 use std::env;
+use std::str::FromStr;
+use std::sync::{Arc, Mutex};
 
-use rs::api::pubsub::{process_block, rabbit_consume};
+use secp256k1::PublicKey;
+use serde::{Deserialize, Serialize};
+
+use rs::account::{gen_keypair, Account};
+use rs::api::pubsub::{process_block, process_transaction, rabbit_consume};
 use rs::api::server::{replace_chain, run_server};
 use rs::blockchain::blockchain::Blockchain;
-use std::sync::{Arc, Mutex};
+use rs::transaction::tx::Transaction;
+use rs::transaction::tx_queue::TransactionQueue;
+use rs::util::{prep_state, GlobalState};
 
 #[actix_web::main]
 async fn main() {
-    let blockchain = Blockchain::new(); //todo could probably have made this a global var
-    let wrapped_bc = Arc::new(Mutex::new(blockchain));
-
+    let global_state = prep_state();
+    let wrapped_gs = Arc::new(Mutex::new(global_state));
     let mut port = 8080;
-    let args: Vec<String> = env::args().collect();
 
     // ----------------------------------------------------------------------------- peer nodes
-    let bc_clone = wrapped_bc.clone();
+    let args: Vec<String> = env::args().collect();
     if args.len() > 1 && (args[1] == "--peer" || args[1] == "-p") {
-        replace_chain(wrapped_bc.clone()).await;
+        replace_chain(wrapped_gs.clone()).await;
         // port = rand::random::<u16>();
         port = 8081; //easier for debugging
     }
 
-    // ----------------------------------------------------------------------------- listen for blocks
+    // ----------------------------------------------------------------------------- listen for blocks & txs
+    let gs_clone = wrapped_gs.clone();
+    let gs_clone2 = wrapped_gs.clone();
     tokio::spawn(async move {
-        rabbit_consume(process_block, bc_clone, "blocks")
+        rabbit_consume(process_block, gs_clone, "blocks")
+            .await
+            .unwrap();
+    });
+    tokio::spawn(async move {
+        rabbit_consume(process_transaction, gs_clone2, "tx")
             .await
             .unwrap();
     });
 
     // ----------------------------------------------------------------------------- server
     println!("listening on port {}", &port);
-    run_server(&format!("localhost:{}", port), wrapped_bc)
+    run_server(&format!("localhost:{}", port), wrapped_gs)
         .unwrap()
         .await
         .unwrap();

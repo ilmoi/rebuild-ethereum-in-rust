@@ -8,10 +8,10 @@ const Trie = require('../store/trie');
 // const MAX_NONCE_VALUE = 2 ** 64;
 
 class Block {
-  constructor({ blockHeaders, transactionSeries }) { // in ethereum block = headers + tx series
+  // constructor({ blockHeaders, transactionSeries }) { // in ethereum block = headers + tx series
     // this.blockHeaders = blockHeaders;
-    this.transactionSeries = transactionSeries;
-  }
+    // this.transactionSeries = transactionSeries;
+  // }
 
   // static calculateBlockTargetHash({ lastBlock }) {
   //   const value = (MAX_HASH_VALUE / lastBlock.blockHeaders.difficulty).toString(16); // take the max possible hash value and divide by difficulty. The bigger the diff, the smaller the resulting hash, the harder to get an underhash
@@ -40,7 +40,7 @@ class Block {
   static mineBlock({
     // lastBlock,
     // beneficiary,
-    transactionSeries,
+    // transactionSeries,
     stateRoot
   }) {
     // const target = Block.calculateBlockTargetHash({ lastBlock });
@@ -70,7 +70,7 @@ class Block {
 
     // return new this({ //return new block
     //   blockHeaders: { ...truncatedBlockHeaders, nonce },
-      transactionSeries
+    //   transactionSeries
     // });
   }
 
@@ -128,12 +128,12 @@ class Block {
       //   ));
       // }
 
-      Transaction.validateTransactionSeries({
-        state, transactionSeries: block.transactionSeries
-      }).then(resolve)
-        .catch(reject);
-    });
-  }
+      // Transaction.validateTransactionSeries({
+      //   state, transactionSeries: block.transactionSeries
+      // }).then(resolve)
+      //   .catch(reject);
+    // });
+  // }
 
   static runBlock({ block, state }) {
     for (let transaction of block.transactionSeries) {

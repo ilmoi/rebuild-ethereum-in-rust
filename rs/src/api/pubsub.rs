@@ -1,10 +1,13 @@
 use crate::blockchain::block::Block;
 use crate::blockchain::blockchain::Blockchain;
+use crate::transaction::tx::Transaction;
+use crate::util::GlobalState;
 use futures_util::stream::StreamExt;
 use lapin::{
     options::*, publisher_confirm::Confirmation, types::FieldTable, BasicProperties, Channel,
     Connection, ConnectionProperties, ExchangeKind, Promise, Result,
 };
+use std::ops::DerefMut;
 use std::sync::{Arc, Mutex};
 
 pub async fn rabbit_connect() -> Result<Connection> {
@@ -45,8 +48,8 @@ pub async fn rabbit_publish(payload: String, exchange: &str) -> Result<()> {
 }
 
 pub async fn rabbit_consume(
-    processor: fn(String, Arc<Mutex<Blockchain>>),
-    blockchain: Arc<Mutex<Blockchain>>,
+    processor: fn(String, Arc<Mutex<GlobalState>>),
+    global_state: Arc<Mutex<GlobalState>>,
     exchange: &str,
 ) -> Result<()> {
     let conn = rabbit_connect().await.unwrap();
@@ -92,16 +95,31 @@ pub async fn rabbit_consume(
 
         //restore into string and send for processing
         let data = String::from_utf8(delivery.data).unwrap();
-        processor(data, blockchain.clone());
+        processor(data, global_state.clone());
     }
 
     Ok(())
 }
 
-pub fn process_block(block: String, blockchain: Arc<Mutex<Blockchain>>) {
+pub fn process_block(block: String, global_state: Arc<Mutex<GlobalState>>) {
     let block_object: Block = serde_json::from_str(&block).unwrap();
     println!("deserialized block: {:?}", block_object);
 
-    let mut blockchain = blockchain.lock().unwrap();
-    blockchain.add_block(block_object);
+    let mut guard = global_state.lock().unwrap();
+    let global_state = guard.deref_mut();
+    let mut tx_queue = &mut global_state.tx_queue;
+    let mut blockchain = &mut global_state.blockchain;
+
+    blockchain.add_block(block_object, tx_queue);
+}
+
+pub fn process_transaction(transaction: String, global_state: Arc<Mutex<GlobalState>>) {
+    let tx_object: Transaction = serde_json::from_str(&transaction).unwrap();
+    println!("deserialized tx: {:?}", tx_object);
+
+    let mut guard = global_state.lock().unwrap();
+    let global_state = guard.deref_mut();
+    let mut tx_queue = &mut global_state.tx_queue;
+
+    tx_queue.add(tx_object);
 }

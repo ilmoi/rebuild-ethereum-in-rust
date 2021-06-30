@@ -2,6 +2,7 @@
 
 use float_cmp::approx_eq;
 use float_ord::FloatOrd;
+use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::ops;
 
@@ -12,7 +13,7 @@ use std::ops;
 
 const EXECUTION_LIMIT: u32 = 10000;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub enum OPCODE {
     STOP,
     PUSH,

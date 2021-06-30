@@ -1,7 +1,33 @@
+use crate::account::Account;
 use crate::blockchain::block::U256;
+use crate::blockchain::blockchain::Blockchain;
+use crate::transaction::tx::Transaction;
+use crate::transaction::tx_queue::TransactionQueue;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use sha3::{Digest, Keccak256};
+use std::sync::{Arc, Mutex};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GlobalState {
+    pub blockchain: Blockchain,
+    pub tx_queue: TransactionQueue,
+    pub miner_account: Account,
+}
+
+pub fn prep_state() -> GlobalState {
+    let miner_account = Account::new(vec![]);
+    let tx = Transaction::create_transaction(Some(miner_account), None, 0, None);
+
+    let mut global_state = GlobalState {
+        blockchain: Blockchain::new(),
+        tx_queue: TransactionQueue::new(),
+        miner_account: Account::new(vec![]),
+    };
+    global_state.tx_queue.add(tx);
+
+    global_state
+}
 
 pub fn sort_characters<T>(data: &T) -> String
 where

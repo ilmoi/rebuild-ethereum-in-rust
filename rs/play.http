@@ -1,0 +1,7 @@
+POST http://localhost:8080/transact
+Content-Type: application/json
+
+{
+  "value": 123,
+  "to": "02a8a48d9ade60322218e1f73be522500fe7fe7c032765aa41244ba64b331c0f59"
+}

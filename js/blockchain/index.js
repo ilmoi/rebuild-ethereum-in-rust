@@ -17,9 +17,9 @@ class Blockchain {
 
         Block.runBlock({ block, state: this.state });
 
-        transactionQueue.clearBlockTransactions({
-          transactionSeries: block.transactionSeries
-        });
+        // transactionQueue.clearBlockTransactions({
+        //   transactionSeries: block.transactionSeries
+        // });
 
         // return resolve();
       // }).catch(reject);

@@ -1,5 +1,8 @@
 use crate::blockchain::block::Block;
+use crate::transaction::tx_queue::TransactionQueue;
+use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Blockchain {
     pub chain: Vec<Block>, // state
 }
@@ -10,13 +13,16 @@ impl Blockchain {
             chain: vec![Block::genesis()],
         }
     }
-    pub fn add_block(&mut self, block: Block) {
+    pub fn add_block(&mut self, block: Block, tx_queue: &mut TransactionQueue) {
         let last_block = &self.chain[self.chain.len() - 1];
         if Block::validate_block(last_block, &block) {
             println!(
                 "block {} is valid, adding to chain...",
                 block.block_headers.truncated_block_headers.number
             );
+            //clear processed tx from the queue
+            tx_queue.clear_block_tx(&block.tx_series);
+
             self.chain.push(block);
         }
     }
