@@ -12,7 +12,7 @@ pub async fn spawn_app() -> (u16, PublicKey, Arc<Mutex<GlobalState>>) {
     let miner_addr = global_state.miner_account.public_account.address.clone();
 
     let wrapped_gs = Arc::new(Mutex::new(global_state));
-    let mut port = rand::random::<u16>();
+    let port = rand::random::<u16>();
 
     let gs_clone = wrapped_gs.clone();
     let gs_clone2 = wrapped_gs.clone();

@@ -1,11 +1,10 @@
 #![allow(illegal_floating_point_literal_pattern)]
 
 use crate::store::trie::Trie;
-use float_cmp::approx_eq;
-use float_ord::FloatOrd;
+
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
-use std::collections::HashMap;
+
 use std::ops;
 
 // ----------------------------------------------------------------------------- defn

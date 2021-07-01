@@ -6,11 +6,9 @@ use crate::store::state::State;
 use crate::transaction::tx::Transaction;
 use crate::transaction::tx_queue::TransactionQueue;
 use itertools::Itertools;
-use secp256k1::{PublicKey, SecretKey};
+
 use serde::{Deserialize, Serialize};
 use sha3::{Digest, Keccak256};
-use std::str::FromStr;
-use std::sync::{Arc, Mutex};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GlobalState {

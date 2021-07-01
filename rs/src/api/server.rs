@@ -1,20 +1,20 @@
 use std::sync::{Arc, Mutex};
 
 use actix_web::dev::Server;
-use actix_web::{get, post, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
+use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
 use serde::{Deserialize, Serialize};
 
 use crate::account::Account;
 use crate::api::pubsub::rabbit_publish;
 use crate::blockchain::block::Block;
-use crate::blockchain::blockchain::Blockchain;
+
 use crate::interpreter::OPCODE;
 use crate::transaction::tx::Transaction;
-use crate::transaction::tx_queue::TransactionQueue;
+
 use crate::util::GlobalState;
 use secp256k1::PublicKey;
 use std::collections::HashMap;
-use std::error::Error;
+
 use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
 
@@ -54,7 +54,7 @@ pub async fn mine(global_state: web::Data<Arc<Mutex<GlobalState>>>) -> impl Resp
     let beneficiary = global_state.miner_account.public_account.address;
     let tx_series = global_state.tx_queue.get_tx_series().clone();
     let mut tx_queue = &mut global_state.tx_queue;
-    let mut blockchain = &mut global_state.blockchain;
+    let blockchain = &mut global_state.blockchain;
 
     let last_block = &blockchain.chain[&blockchain.chain.len() - 1];
     let state_root = blockchain.state.get_state_root();
@@ -144,7 +144,7 @@ pub async fn get_storage_trie(global_state: web::Data<Arc<Mutex<GlobalState>>>) 
 pub async fn replace_chain(global_state: Arc<Mutex<GlobalState>>) {
     let mut guard = global_state.lock().unwrap();
     let global_state = guard.deref_mut();
-    let mut blockchain = &mut global_state.blockchain;
+    let blockchain = &mut global_state.blockchain;
 
     let body = reqwest::get("http://localhost:8080/blockchain")
         .await
@@ -153,21 +153,21 @@ pub async fn replace_chain(global_state: Arc<Mutex<GlobalState>>) {
         .await
         .unwrap();
     let chain: Vec<Block> = serde_json::from_str(&body).unwrap();
-    blockchain.replace_chain(chain);
+    blockchain.replace_chain(chain).unwrap();
 }
 
 //the tests below are unit tests - they don't bother to actually mine blocks as they go. For that see integration tests in tests/ folder
 #[cfg(test)]
 mod tests {
-    use crate::account::{gen_keypair, Account};
-    use crate::api::pubsub::{process_block, process_transaction, rabbit_consume};
-    use crate::api::server::{get_balance, run_server, TxRequest};
-    use crate::blockchain::blockchain::Blockchain;
+    use crate::account::gen_keypair;
+
+    use crate::api::server::{run_server, TxRequest};
+
     use crate::interpreter::OPCODE;
     use crate::transaction::tx::{Transaction, TxType};
-    use crate::transaction::tx_queue::TransactionQueue;
-    use crate::util::{prep_state, GlobalState};
-    use secp256k1::bitcoin_hashes::hex::ToHex;
+
+    use crate::util::prep_state;
+
     use std::collections::HashMap;
     use std::sync::{Arc, Mutex};
 
@@ -176,12 +176,12 @@ mod tests {
         let global_state = prep_state();
         let miner_addr = global_state.miner_account.public_account.address.clone();
         let wrapped_gs = Arc::new(Mutex::new(global_state));
-        let mut port = rand::random::<u16>();
+        let port = rand::random::<u16>();
 
         let server = run_server(&format!("localhost:{}", port), wrapped_gs).unwrap();
         tokio::spawn(server); //spawn server on a diff green thread, so we can run the test on main
 
-        let (sk, pk) = gen_keypair();
+        let (_sk, pk) = gen_keypair();
         //warning: do NOT try to deserialize with serde_json::to_string(), reqwest does it under the hood. Otherwise you'll fuck up the request body
         let tx_request = TxRequest {
             value: 123,
@@ -217,9 +217,9 @@ mod tests {
     #[actix_rt::test]
     async fn test_transact_endpoint_account_creation() {
         let global_state = prep_state();
-        let miner_addr = global_state.miner_account.public_account.address.clone();
+        let _miner_addr = global_state.miner_account.public_account.address.clone();
         let wrapped_gs = Arc::new(Mutex::new(global_state));
-        let mut port = rand::random::<u16>();
+        let port = rand::random::<u16>();
 
         let server = run_server(&format!("localhost:{}", port), wrapped_gs).unwrap();
         tokio::spawn(server); //spawn server on a diff green thread, so we can run the test on main
@@ -256,9 +256,9 @@ mod tests {
     #[actix_rt::test]
     async fn test_transact_endpoint_smart_contract_creation() {
         let global_state = prep_state();
-        let miner_addr = global_state.miner_account.public_account.address.clone();
+        let _miner_addr = global_state.miner_account.public_account.address.clone();
         let wrapped_gs = Arc::new(Mutex::new(global_state));
-        let mut port = rand::random::<u16>();
+        let port = rand::random::<u16>();
 
         let server = run_server(&format!("localhost:{}", port), wrapped_gs).unwrap();
         tokio::spawn(server); //spawn server on a diff green thread, so we can run the test on main
@@ -306,7 +306,7 @@ mod tests {
         let global_state = prep_state();
         let miner_addr = global_state.miner_account.public_account.address.clone();
         let wrapped_gs = Arc::new(Mutex::new(global_state));
-        let mut port = rand::random::<u16>();
+        let port = rand::random::<u16>();
 
         let server = run_server(&format!("localhost:{}", port), wrapped_gs).unwrap();
         tokio::spawn(server); //spawn server on a diff green thread, so we can run the test on main

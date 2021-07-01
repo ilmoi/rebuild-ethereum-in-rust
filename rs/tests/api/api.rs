@@ -1,16 +1,8 @@
 use crate::helpers::{get_balance_call, mine_call, pause_execution, spawn_app, transact_call};
-use rs::account::{gen_keypair, Account};
-use rs::api::pubsub::{process_block, process_transaction, rabbit_consume};
-use rs::api::server::{get_balance, run_server, TxRequest};
-use rs::blockchain::blockchain::Blockchain;
+
 use rs::interpreter::OPCODE;
-use rs::transaction::tx::{Transaction, TxType};
-use rs::transaction::tx_queue::TransactionQueue;
-use rs::util::{prep_state, GlobalState};
-use secp256k1::bitcoin_hashes::hex::ToHex;
-use std::collections::HashMap;
+
 use std::ops::Deref;
-use std::sync::{Arc, Mutex};
 
 #[actix_rt::test]
 async fn test_transaction_moves_value() {
@@ -28,7 +20,7 @@ async fn test_transaction_moves_value() {
     mine_call(port).await;
 
     // ----------------------------------------------------------------------------- send value
-    let tx = transact_call(Some(created_addr), vec![], 123, 100, port).await;
+    let _tx = transact_call(Some(created_addr), vec![], 123, 100, port).await;
 
     //give enough time for workers to receive the tx and add it to the q, before mining a block
     pause_execution(1).await;
@@ -70,7 +62,7 @@ pub async fn test_executes_smart_contract() {
     mine_call(port).await;
 
     // ----------------------------------------------------------------------------- interact with sc
-    let tx = transact_call(Some(created_addr), vec![], 0, 100, port).await;
+    let _tx = transact_call(Some(created_addr), vec![], 0, 100, port).await;
 
     //give enough time for workers to receive the tx and add it to the q, before mining a block
     pause_execution(1).await;
@@ -114,7 +106,7 @@ pub async fn test_fails_smart_contract_execution_due_to_low_gas_limit() {
     mine_call(port).await;
 
     // ----------------------------------------------------------------------------- interact with sc
-    let tx = transact_call(Some(created_addr), vec![], 0, 1, port).await;
+    let _tx = transact_call(Some(created_addr), vec![], 0, 1, port).await;
 
     //give enough time for workers to receive the tx and add it to the q, before mining a block
     pause_execution(1).await;
@@ -161,7 +153,7 @@ pub async fn test_sc_stores_values_in_storage_trie() {
     mine_call(port).await;
 
     // ----------------------------------------------------------------------------- interact with sc
-    let tx = transact_call(Some(created_addr), vec![], 0, 100, port).await;
+    let _tx = transact_call(Some(created_addr), vec![], 0, 100, port).await;
 
     //give enough time for workers to receive the tx and add it to the q, before mining a block
     pause_execution(1).await;

@@ -11,7 +11,8 @@ Feel free to fork / use as you please.
 
 # The code
 JS code is not my own. All credit goes to [David Joseph Katz](https://github.com/15Dkatz) and [his
-udemy course](https://www.udemy.com/course/build-ethereum-from-scratch/). Kudos
+udemy course](https://www.udemy.com/course/build-ethereum-from-scratch/).(
+(original [github repo](https://github.com/15Dkatz/build-ethereum-from-scratch)) Kudos
 for the awesome course dude.
 
 Rust code is definitely not production-grade - no edge cases, no error

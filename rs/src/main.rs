@@ -1,23 +1,17 @@
 // these 2 lines have to stay in main
-#[macro_use]
-extern crate lazy_static;
-#[macro_use]
-extern crate uint;
+// #[macro_use]
+// extern crate lazy_static;
+// #[macro_use]
+// extern crate uint;
 
 use std::env;
-use std::str::FromStr;
+
 use std::sync::{Arc, Mutex};
 
-use secp256k1::PublicKey;
-use serde::{Deserialize, Serialize};
-
-use rs::account::{gen_keypair, Account};
 use rs::api::pubsub::{process_block, process_transaction, rabbit_consume};
 use rs::api::server::{replace_chain, run_server};
-use rs::blockchain::blockchain::Blockchain;
-use rs::transaction::tx::Transaction;
-use rs::transaction::tx_queue::TransactionQueue;
-use rs::util::{prep_state, GlobalState};
+
+use rs::util::prep_state;
 
 #[actix_web::main]
 async fn main() {

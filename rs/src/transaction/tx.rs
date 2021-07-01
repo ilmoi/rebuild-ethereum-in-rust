@@ -1,12 +1,10 @@
-use secp256k1::{PublicKey, Secp256k1, SecretKey, Signature};
+use secp256k1::{PublicKey, Signature};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::account::{Account, PublicAccount};
-use crate::interpreter::{extract_val_from_opcode, Interpreter, OPCODE};
+use crate::interpreter::{extract_val_from_opcode, Interpreter};
 use crate::store::state::State;
-use std::cmp::Ordering;
-use std::str::FromStr;
 
 pub const MINING_REWARD: u64 = 50;
 
@@ -114,8 +112,8 @@ impl Transaction {
             return false;
         };
 
-        let mut from_account = state.get_account(tx.unsigned_tx.from.unwrap());
-        let mut to_account = state.get_account(tx.unsigned_tx.to.unwrap());
+        let from_account = state.get_account(tx.unsigned_tx.from.unwrap());
+        let to_account = state.get_account(tx.unsigned_tx.to.unwrap());
         //important to include both the tx value and the gas limit
         if (tx.unsigned_tx.value + tx.unsigned_tx.gas_limit) > from_account.balance {
             println!("exceeded balance");
@@ -124,7 +122,7 @@ impl Transaction {
 
         //when hitting a SC
         if to_account.code_hash.is_some() {
-            let mut storage_trie = state.storage_trie_map.get_mut(&to_account.address).unwrap();
+            let storage_trie = state.storage_trie_map.get_mut(&to_account.address).unwrap();
             let mut interpreter = Interpreter::new();
             let gas_used = interpreter.run_code(to_account.code, storage_trie).gas_used;
             if tx.unsigned_tx.gas_limit < gas_used {
@@ -192,7 +190,7 @@ impl Transaction {
         //if true, then we're interacting with a smart contract
         if to_account.code_hash.is_some() {
             let mut interpreter = Interpreter::new();
-            let mut storage_trie = state.storage_trie_map.get_mut(&to_account.address).unwrap();
+            let storage_trie = state.storage_trie_map.get_mut(&to_account.address).unwrap();
             let evm_ret_val = interpreter.run_code(to_account.code.clone(), storage_trie);
             println!(
                 "SMART CONTRACT EXECUTION AT ADDRESS: {}. RESULT: {}, GAS USED: {}",
@@ -230,7 +228,7 @@ impl Transaction {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::util::prep_state;
+    use crate::interpreter::OPCODE;
 
     #[test]
     fn test_normal_account_creation() {

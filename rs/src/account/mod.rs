@@ -1,12 +1,11 @@
 use crate::interpreter::OPCODE;
 use crate::store::state::State;
 use crate::util::keccak_hash;
-use secp256k1::bitcoin_hashes::hex::ToHex;
+
 use secp256k1::bitcoin_hashes::sha256;
 use secp256k1::rand::rngs::OsRng;
 use secp256k1::{Message, PublicKey, Secp256k1, SecretKey, Signature};
 use serde::{Deserialize, Serialize};
-use std::str::FromStr;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PublicAccount {

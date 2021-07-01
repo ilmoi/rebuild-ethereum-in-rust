@@ -1,4 +1,4 @@
-use crate::account::{Account, PublicAccount};
+use crate::account::PublicAccount;
 use crate::store::trie::Trie;
 use secp256k1::bitcoin_hashes::hex::ToHex;
 use secp256k1::PublicKey;

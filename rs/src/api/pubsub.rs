@@ -1,11 +1,11 @@
 use crate::blockchain::block::Block;
-use crate::blockchain::blockchain::Blockchain;
+
 use crate::transaction::tx::Transaction;
 use crate::util::GlobalState;
 use futures_util::stream::StreamExt;
 use lapin::{
-    options::*, publisher_confirm::Confirmation, types::FieldTable, BasicProperties, Channel,
-    Connection, ConnectionProperties, ExchangeKind, Promise, Result,
+    options::*, types::FieldTable, BasicProperties, Channel, Connection, ConnectionProperties,
+    ExchangeKind, Promise, Result,
 };
 use std::ops::DerefMut;
 use std::sync::{Arc, Mutex};
@@ -71,7 +71,7 @@ pub async fn rabbit_consume(
     println!("declared a tmp queue: {}", &queue.name().to_string());
 
     // bind the tmp queue to the exchange, otherwise the exchange won't know to fanout msgs to this q
-    channel_b.queue_bind(
+    let _ = channel_b.queue_bind(
         &queue.name().to_string(),
         exchange,
         "", //again no need to specify coz using fanout
@@ -107,8 +107,8 @@ pub fn process_block(block: String, global_state: Arc<Mutex<GlobalState>>) {
 
     let mut guard = global_state.lock().unwrap();
     let global_state = guard.deref_mut();
-    let mut tx_queue = &mut global_state.tx_queue;
-    let mut blockchain = &mut global_state.blockchain;
+    let tx_queue = &mut global_state.tx_queue;
+    let blockchain = &mut global_state.blockchain;
 
     if blockchain.add_block(block_object.clone(), tx_queue) {
         println!(
@@ -129,7 +129,7 @@ pub fn process_transaction(transaction: String, global_state: Arc<Mutex<GlobalSt
 
     let mut guard = global_state.lock().unwrap();
     let global_state = guard.deref_mut();
-    let mut tx_queue = &mut global_state.tx_queue;
+    let tx_queue = &mut global_state.tx_queue;
 
     tx_queue.add(tx_object);
     println!(

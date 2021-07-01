@@ -5,8 +5,7 @@ use crate::transaction::tx::{Transaction, MINING_REWARD};
 use crate::util::{base10_to_base16, base16_to_base10, keccak_hash};
 use chrono::{Duration, Utc};
 use lazy_static::lazy_static;
-use ntest::timeout;
-use secp256k1::bitcoin_hashes::_export::_core::str::FromStr;
+
 use secp256k1::PublicKey;
 use serde::{Deserialize, Serialize};
 use uint::construct_uint;
@@ -223,6 +222,7 @@ impl Block {
 mod tests {
     use super::*;
     use crate::util::prep_state;
+    use ntest::timeout;
 
     #[test]
     fn test_difficulty_down() {
@@ -265,7 +265,7 @@ mod tests {
     fn test_high_difficulty() {
         let mut last_block = Block::genesis();
         last_block.block_headers.truncated_block_headers.difficulty = 1000000;
-        let b = Block::mine_block(&last_block, gen_keypair().1, vec![], &"".into());
+        let _b = Block::mine_block(&last_block, gen_keypair().1, vec![], &"".into());
     }
 
     #[test]
