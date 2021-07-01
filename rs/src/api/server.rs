@@ -8,11 +8,13 @@ use crate::account::Account;
 use crate::api::pubsub::rabbit_publish;
 use crate::blockchain::block::Block;
 use crate::blockchain::blockchain::Blockchain;
+use crate::interpreter::OPCODE;
 use crate::transaction::tx::Transaction;
 use crate::transaction::tx_queue::TransactionQueue;
 use crate::util::GlobalState;
 use secp256k1::PublicKey;
 use std::collections::HashMap;
+use std::error::Error;
 use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
 
@@ -25,6 +27,8 @@ pub fn run_server(addr: &str, global_state: Arc<Mutex<GlobalState>>) -> std::io:
             .service(mine)
             .service(transact)
             .service(get_balance)
+            .service(get_state)
+            .service(get_storage_trie)
             .app_data(global_state.clone())
     })
     .bind(addr)?
@@ -71,6 +75,8 @@ pub async fn mine(global_state: web::Data<Arc<Mutex<GlobalState>>>) -> impl Resp
 pub struct TxRequest {
     pub value: u64,
     pub to: Option<PublicKey>,
+    pub code: Vec<OPCODE>,
+    pub gas_limit: u64,
 }
 
 /// giving the miner power to a)transact, b)create an account
@@ -85,10 +91,15 @@ pub async fn transact(
     // depending on whether the "to" field is present this will be either a normal tx (present) or an acc creation tx (not present)
     let account = match body.to {
         Some(_to) => global_state.miner_account.clone(),
-        None => Account::new(vec![]), //if not present, we're creating a new account
+        None => Account::new(body.code.clone()), //if not present, we're creating a new account
     };
-    let new_tx =
-        Transaction::create_transaction(Some(account.to_owned()), body.to, body.value, None);
+    let new_tx = Transaction::create_transaction(
+        Some(account.to_owned()),
+        body.to,
+        body.value,
+        None,
+        body.gas_limit,
+    );
 
     // (!) No longer adding to local queue - instead broadcasting to entire network. Unlike with blocks which we're processing locally, we don't have dedup functionality for tx
     // let mut tx_queue = &mut global_state.tx_queue;
@@ -114,6 +125,22 @@ pub async fn get_balance(
     HttpResponse::Ok().json(&map)
 }
 
+#[get("/state")]
+pub async fn get_state(global_state: web::Data<Arc<Mutex<GlobalState>>>) -> impl Responder {
+    let lock = global_state.lock().unwrap();
+    let global_state = lock.deref();
+    let trie = &global_state.blockchain.state.state_trie;
+    HttpResponse::Ok().json(trie)
+}
+
+#[get("/storage_trie")]
+pub async fn get_storage_trie(global_state: web::Data<Arc<Mutex<GlobalState>>>) -> impl Responder {
+    let lock = global_state.lock().unwrap();
+    let global_state = lock.deref();
+    let trie = &global_state.blockchain.state.storage_trie_map;
+    HttpResponse::Ok().json(trie)
+}
+
 pub async fn replace_chain(global_state: Arc<Mutex<GlobalState>>) {
     let mut guard = global_state.lock().unwrap();
     let global_state = guard.deref_mut();
@@ -129,12 +156,14 @@ pub async fn replace_chain(global_state: Arc<Mutex<GlobalState>>) {
     blockchain.replace_chain(chain);
 }
 
+//the tests below are unit tests - they don't bother to actually mine blocks as they go. For that see integration tests in tests/ folder
 #[cfg(test)]
 mod tests {
     use crate::account::{gen_keypair, Account};
     use crate::api::pubsub::{process_block, process_transaction, rabbit_consume};
-    use crate::api::server::{run_server, TxRequest};
+    use crate::api::server::{get_balance, run_server, TxRequest};
     use crate::blockchain::blockchain::Blockchain;
+    use crate::interpreter::OPCODE;
     use crate::transaction::tx::{Transaction, TxType};
     use crate::transaction::tx_queue::TransactionQueue;
     use crate::util::{prep_state, GlobalState};
@@ -142,7 +171,6 @@ mod tests {
     use std::collections::HashMap;
     use std::sync::{Arc, Mutex};
 
-    ///NOTE we're NOT mining the block here
     #[actix_rt::test]
     async fn test_transact_endpoint() {
         let global_state = prep_state();
@@ -158,6 +186,8 @@ mod tests {
         let tx_request = TxRequest {
             value: 123,
             to: Some(pk),
+            code: vec![],
+            gas_limit: 100,
         };
 
         let client = reqwest::Client::new();
@@ -184,7 +214,6 @@ mod tests {
         assert_eq!(res_json.unsigned_tx.data.tx_type, TxType::Transact);
     }
 
-    ///NOTE we're not mining the block here
     #[actix_rt::test]
     async fn test_transact_endpoint_account_creation() {
         let global_state = prep_state();
@@ -198,6 +227,56 @@ mod tests {
         let tx_request = TxRequest {
             value: 123,
             to: None,
+            code: vec![],
+            gas_limit: 100,
+        };
+
+        let client = reqwest::Client::new();
+        let res = client
+            .post(format!("http://localhost:{}/transact", port))
+            .header("Content-Type", "application/json")
+            .json(&tx_request)
+            .send()
+            .await
+            .unwrap();
+
+        assert_eq!(
+            res.status().as_u16(),
+            200,
+            "the api didn't respond with a 200.",
+        );
+
+        let res_json = res.json::<Transaction>().await.unwrap();
+        assert_eq!(res_json.unsigned_tx.value, 123);
+        assert_eq!(res_json.unsigned_tx.to, None);
+        assert_eq!(res_json.unsigned_tx.from, None);
+        assert_eq!(res_json.unsigned_tx.data.tx_type, TxType::CreateAccount);
+    }
+
+    #[actix_rt::test]
+    async fn test_transact_endpoint_smart_contract_creation() {
+        let global_state = prep_state();
+        let miner_addr = global_state.miner_account.public_account.address.clone();
+        let wrapped_gs = Arc::new(Mutex::new(global_state));
+        let mut port = rand::random::<u16>();
+
+        let server = run_server(&format!("localhost:{}", port), wrapped_gs).unwrap();
+        tokio::spawn(server); //spawn server on a diff green thread, so we can run the test on main
+
+        let code = vec![
+            OPCODE::PUSH,
+            OPCODE::VAL(10),
+            OPCODE::PUSH,
+            OPCODE::VAL(5),
+            OPCODE::ADD,
+            OPCODE::STOP,
+        ];
+
+        let tx_request = TxRequest {
+            value: 123,
+            to: None,
+            code,
+            gas_limit: 100,
         };
 
         let client = reqwest::Client::new();
@@ -254,136 +333,6 @@ mod tests {
             "the api didn't respond with a 200.",
         );
         let res_json = res.json::<HashMap<String, u64>>().await.unwrap();
-        assert_eq!(res_json.get("balance").unwrap().to_owned(), 1000);
-    }
-
-    /// todo this test fails some times but not others
-    ///  I'm not sure why - I thought it was due to tokio::time not working, but it is working - https://play.rust-lang.org/?version=stable&mode=debug&edition=2018&gist=cb233f93e0125b80887c030f96e91c70
-    ///  I could play with blocking api of tokio/reqwest to get it working but cba
-    /// requires an instance of RabbitMQ to be running
-    #[actix_rt::test]
-    async fn test_transact_and_mine() {
-        let global_state = prep_state();
-        let miner_addr = global_state.miner_account.public_account.address.clone();
-
-        println!("miner addr is {}", miner_addr);
-        println!("miner addr is {:?}", miner_addr);
-
-        let wrapped_gs = Arc::new(Mutex::new(global_state));
-        let mut port = rand::random::<u16>();
-
-        let gs_clone = wrapped_gs.clone();
-        let gs_clone2 = wrapped_gs.clone();
-        let h = tokio::spawn(async move {
-            rabbit_consume(process_block, gs_clone, "blocks")
-                .await
-                .unwrap();
-        });
-        let h2 = tokio::spawn(async move {
-            rabbit_consume(process_transaction, gs_clone2, "tx")
-                .await
-                .unwrap();
-        });
-
-        let server = run_server(&format!("localhost:{}", port), wrapped_gs).unwrap();
-        tokio::spawn(server); //spawn server on a diff green thread, so we can run the test on main
-
-        // -----------------------------------------------------------------------------create account
-        let create_account_request = TxRequest { value: 0, to: None };
-
-        let client = reqwest::Client::new();
-        let res = client
-            .post(format!("http://localhost:{}/transact", port))
-            .header("Content-Type", "application/json")
-            .json(&create_account_request)
-            .send()
-            .await
-            .unwrap();
-
-        assert_eq!(
-            res.status().as_u16(),
-            200,
-            "the api didn't respond with a 200.",
-        );
-
-        let res_json = res.json::<Transaction>().await.unwrap();
-        let created_addr = res_json.unsigned_tx.data.account_data.unwrap().address;
-        println!("created addr is {}", created_addr);
-        println!("created addr is {:?}", created_addr);
-
-        // mine the tx - need to mine the account creation tx before we attempt a transfer
-        client
-            .get(format!("http://localhost:{}/mine", port))
-            .send()
-            .await
-            .expect("mining failed");
-
-        // ----------------------------------------------------------------------------- send value
-        let tx_request = TxRequest {
-            value: 123,
-            to: Some(created_addr),
-        };
-
-        let client = reqwest::Client::new();
-        let res = client
-            .post(format!("http://localhost:{}/transact", port))
-            .header("Content-Type", "application/json")
-            .json(&tx_request)
-            .send()
-            .await
-            .unwrap();
-
-        assert_eq!(
-            res.status().as_u16(),
-            200,
-            "the api didn't respond with a 200.",
-        );
-        let res_json = res.json::<Transaction>().await.unwrap();
-        assert_eq!(res_json.unsigned_tx.value, 123);
-        assert_eq!(res_json.unsigned_tx.to, Some(created_addr));
-        assert_eq!(res_json.unsigned_tx.from, Some(miner_addr));
-        assert_ne!(res_json.unsigned_tx.to, res_json.unsigned_tx.from);
-        assert_eq!(res_json.unsigned_tx.data.tx_type, TxType::Transact);
-
-        println!("tx was: {:#?}", res_json);
-
-        client
-            .get(format!("http://localhost:{}/mine", port))
-            .send()
-            .await
-            .expect("mining failed");
-
-        // ----------------------------------------------------------------------------- confirm balance change
-
-        let res = client
-            .get(format!("http://localhost:{}/balance/{}", port, miner_addr))
-            .send()
-            .await
-            .expect("failed to get balance");
-        assert_eq!(
-            res.status().as_u16(),
-            200,
-            "the api didn't respond with a 200.",
-        );
-        let res_json = res.json::<HashMap<String, u64>>().await.unwrap();
-        let balance_sender = res_json.get("balance").unwrap().to_owned();
-        assert_eq!(balance_sender, 1000 - 123);
-
-        let res = client
-            .get(format!(
-                "http://localhost:{}/balance/{}",
-                port, created_addr
-            ))
-            .send()
-            .await
-            .expect("failed to get balance");
-        assert_eq!(
-            res.status().as_u16(),
-            200,
-            "the api didn't respond with a 200.",
-        );
-        let res_json = res.json::<HashMap<String, u64>>().await.unwrap();
-        let balance_receiver = res_json.get("balance").unwrap().to_owned();
-        assert_eq!(balance_receiver, 1000 + 123);
+        assert_eq!(res_json.get("balance").unwrap().to_owned(), 1000 + 50);
     }
 }

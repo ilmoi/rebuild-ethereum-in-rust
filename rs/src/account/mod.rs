@@ -6,9 +6,15 @@ use secp256k1::bitcoin_hashes::sha256;
 use secp256k1::rand::rngs::OsRng;
 use secp256k1::{Message, PublicKey, Secp256k1, SecretKey, Signature};
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PublicAccount {
+    //NOTE: in real ethereum addresses are hashes of public keys (truncated to 20 least significant bytes).
+    // In this implementation we didn't bother and we simply used the public key itself
+    // because the lib we're using - secp256k1 produces compressed keys (starting with 02 and 03)
+    // hence, all the public keys in this implementation are 66 hex chars (33 bytes) long
+    // to learn more how ethereum actually does it, read this - https://www.oreilly.com/library/view/mastering-ethereum/9781491971932/ch04.html
     pub address: PublicKey,
     pub balance: u64,
     pub code: Vec<OPCODE>,
@@ -25,6 +31,7 @@ impl Account {
     //note code can be empty: vec![]
     pub fn new(code: Vec<OPCODE>) -> Self {
         let (secret_key, public_key) = gen_keypair();
+        //probably shouldn't be printing this to terminal in a real blockchain:)
         println!(
             "Created new account with sk, pk: {}, {}",
             secret_key, public_key
@@ -40,9 +47,9 @@ impl Account {
             },
         }
     }
-    //todo purpose of code hash?
     pub fn gen_code_hash(address: &PublicKey, code: &Vec<OPCODE>) -> Option<String> {
         if code.len() > 0 {
+            //including the address means that 2 SCs with same code but diff addresses will get diff hashes
             Some(keccak_hash(&format!("{}{:?}", address, code)))
         } else {
             None
@@ -72,6 +79,14 @@ pub fn gen_keypair() -> (SecretKey, PublicKey) {
     // println!("{}, {}", secret_key, public_key);
     (secret_key, public_key)
 }
+
+// NOTE USED. Wanted to hash contract data to create an account address, but this creates problems
+// pub fn code_hash_to_public_key(code_hash: &String) -> PublicKey {
+//     let secp = Secp256k1::new();
+//     let sk = SecretKey::from_str(code_hash).unwrap();
+//     let pk = PublicKey::from_secret_key(&secp, &sk);
+//     pk
+// }
 
 #[cfg(test)]
 mod tests {

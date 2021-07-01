@@ -1,11 +1,12 @@
-use secp256k1::{PublicKey, Signature};
+use secp256k1::{PublicKey, Secp256k1, SecretKey, Signature};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::account::{Account, PublicAccount};
-use crate::interpreter::OPCODE;
+use crate::interpreter::{extract_val_from_opcode, Interpreter, OPCODE};
 use crate::store::state::State;
 use std::cmp::Ordering;
+use std::str::FromStr;
 
 pub const MINING_REWARD: u64 = 50;
 
@@ -29,6 +30,7 @@ pub struct UnsignedTx {
     pub to: Option<PublicKey>,
     pub value: u64,
     pub data: TxData,
+    pub gas_limit: u64,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -43,6 +45,7 @@ impl Transaction {
         to: Option<PublicKey>,
         value: u64, //note can be 0
         beneficiary: Option<PublicKey>,
+        gas_limit: u64,
     ) -> Self {
         let id = Uuid::new_v4();
         //case 1 - mining tx (signified through the presence of the beneficiary)
@@ -58,6 +61,7 @@ impl Transaction {
                         tx_type: TxType::MiningReward,
                         account_data: None,
                     },
+                    gas_limit,
                 },
                 signature: None,
             };
@@ -76,6 +80,7 @@ impl Transaction {
                     tx_type: TxType::Transact,
                     account_data: None,
                 },
+                gas_limit,
             };
         //case 3 - account creation tx (if both beneficiary and to are absent)
         } else {
@@ -87,8 +92,9 @@ impl Transaction {
                 value,
                 data: TxData {
                     tx_type: TxType::CreateAccount,
-                    account_data: Some(acc.public_account.clone()),
+                    account_data: Some(acc.public_account.clone()), //will have smart contract code in there if it's included in address defn
                 },
+                gas_limit,
             };
         }
         let serialized_tx = serde_json::to_string(&unsigned_tx).unwrap();
@@ -109,9 +115,23 @@ impl Transaction {
         };
 
         let mut from_account = state.get_account(tx.unsigned_tx.from.unwrap());
-        if tx.unsigned_tx.value > from_account.balance {
+        let mut to_account = state.get_account(tx.unsigned_tx.to.unwrap());
+        //important to include both the tx value and the gas limit
+        if (tx.unsigned_tx.value + tx.unsigned_tx.gas_limit) > from_account.balance {
             println!("exceeded balance");
             return false;
+        }
+
+        //when hitting a SC
+        if to_account.code_hash.is_some() {
+            let mut storage_trie = state.storage_trie_map.get_mut(&to_account.address).unwrap();
+            let mut interpreter = Interpreter::new();
+            let gas_used = interpreter.run_code(to_account.code, storage_trie).gas_used;
+            if tx.unsigned_tx.gas_limit < gas_used {
+                println!("insufficient gas limit to execute the samrt contract. Provided: {}, Needed: {}",
+                tx.unsigned_tx.gas_limit, gas_used);
+                return false;
+            }
         }
 
         true
@@ -167,8 +187,30 @@ impl Transaction {
     pub fn run_standard_tx(tx: &Transaction, state: &mut State) {
         let mut from_account = state.get_account(tx.unsigned_tx.from.unwrap());
         let mut to_account = state.get_account(tx.unsigned_tx.to.unwrap());
+        let mut refund = tx.unsigned_tx.gas_limit;
+
+        //if true, then we're interacting with a smart contract
+        if to_account.code_hash.is_some() {
+            let mut interpreter = Interpreter::new();
+            let mut storage_trie = state.storage_trie_map.get_mut(&to_account.address).unwrap();
+            let evm_ret_val = interpreter.run_code(to_account.code.clone(), storage_trie);
+            println!(
+                "SMART CONTRACT EXECUTION AT ADDRESS: {}. RESULT: {}, GAS USED: {}",
+                &to_account.address,
+                extract_val_from_opcode(&evm_ret_val.ret_val).unwrap(),
+                evm_ret_val.gas_used,
+            );
+            //decrease the refund by the amount of gas used
+            refund -= evm_ret_val.gas_used;
+
+            // NOTE: in current implementation interpreter doesn't actually decrement gas of the SC, so we're simply not gonna add it
+            // if we're hitting a SC we're gonna want to give it the gas to run
+            // to_account.balance += evm_ret_val.gas_used;
+        }
 
         from_account.balance -= tx.unsigned_tx.value;
+        from_account.balance -= tx.unsigned_tx.gas_limit;
+        from_account.balance += refund;
         to_account.balance += tx.unsigned_tx.value;
 
         state.put_account(from_account.address, from_account);
@@ -177,6 +219,54 @@ impl Transaction {
 
     pub fn run_create_account_tx(tx: &Transaction, state: &mut State) {
         let account_data = tx.unsigned_tx.data.account_data.clone().unwrap();
+
+        //in real ethereum SC's address is the hash of the sender's account + nonce - https://github.com/ethereumbook/ethereumbook/blob/develop/07smart-contracts-solidity.asciidoc
+        //in our implementation, because we're using PublicKey struct we can't simply use a hash
+        //so we just specify a SC address manually, exactly like we would for a normal account
         state.put_account(account_data.address, account_data);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::util::prep_state;
+
+    #[test]
+    fn test_normal_account_creation() {
+        let miner_account = Account::new(vec![]);
+        let tx = Transaction::create_transaction(Some(miner_account.clone()), None, 0, None, 100);
+
+        let mut state = State::new();
+        let state_before = state.clone();
+
+        Transaction::run_create_account_tx(&tx, &mut state);
+
+        assert_ne!(state_before.get_state_root(), state.get_state_root());
+    }
+
+    #[test]
+    fn test_smart_contract_account_creation() {
+        let code = vec![
+            OPCODE::PUSH,
+            OPCODE::VAL(10),
+            OPCODE::PUSH,
+            OPCODE::VAL(5),
+            OPCODE::ADD,
+            OPCODE::STOP,
+        ];
+        let sc_account = Account::new(code);
+        let tx = Transaction::create_transaction(Some(sc_account), None, 0, None, 100);
+
+        //check to make sure we actually have coded embedded in tx's data, which will trigger the creation of SC account rather than normal account
+        let code_hash = tx.unsigned_tx.data.account_data.clone().unwrap().code_hash;
+        assert!(code_hash.is_some());
+
+        let mut state = State::new();
+        let state_before = state.clone();
+
+        Transaction::run_create_account_tx(&tx, &mut state);
+
+        assert_ne!(state_before.get_state_root(), state.get_state_root());
     }
 }

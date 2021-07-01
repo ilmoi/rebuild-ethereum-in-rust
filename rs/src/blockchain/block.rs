@@ -119,7 +119,7 @@ impl Block {
 
         //include mining tx before we build the trie
         let mining_tx =
-            Transaction::create_transaction(None, None, MINING_REWARD, Some(beneficiary));
+            Transaction::create_transaction(None, None, MINING_REWARD, Some(beneficiary), 10);
         tx_series.push(mining_tx);
 
         let tx_trie = Trie::build_trie(tx_series.clone());
@@ -222,6 +222,7 @@ impl Block {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::util::prep_state;
 
     #[test]
     fn test_difficulty_down() {
@@ -269,16 +270,26 @@ mod tests {
 
     #[test]
     fn test_bad_hash() {
+        let mut global_state = prep_state();
+
         let last_block = Block::genesis();
         let mut b = Block::mine_block(&last_block, gen_keypair().1, vec![], &"".into());
         b.block_headers.truncated_block_headers.parent_hash = "this-is-clearly-wrong".into();
-        assert_eq!(false, Block::validate_block(&last_block, &b));
+        assert_eq!(
+            false,
+            Block::validate_block(&last_block, &b, &mut global_state.blockchain.state)
+        );
     }
 
     #[test]
     fn test_good_hash() {
+        let mut global_state = prep_state();
+
         let last_block = Block::genesis();
         let b = Block::mine_block(&last_block, gen_keypair().1, vec![], &"".into());
-        assert_eq!(true, Block::validate_block(&last_block, &b));
+        assert_eq!(
+            true,
+            Block::validate_block(&last_block, &b, &mut global_state.blockchain.state)
+        );
     }
 }

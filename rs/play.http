@@ -1,15 +1,108 @@
+##################################################################################
+## This script can be run directly using any of JetBrains' editors (eg PyCharm) ##
+## Otherwise use as a guide to build your own http requests (eg with Postman)   ##
+##################################################################################
+
+# 1 Install RabbitMQ if don't already have
+# 2 type "rabbitmq-server" in terminal - this will spawn an instance we'll be using for pubsub
+# 3 type "cargo run" to spawn a node for our blockchain
+#   3b [optional] type "cargo run -- -p" in another terminal window to spawn a second node. The two will stay in sync via pubsub
+
+# 4 view the existing blockchain
+#   note it has exactly 1 block with no transactions = genesis block
+GET http://localhost:8080/blockchain
+
+###
+
+# 5 let's mine a block
+#   note it has 2 tx included in it - those two are defined in util/prep_state()
+#   one creates the account for the miner
+#   another creates a test smart contract account (we know it's a SC account because the code array is not empty)
+GET http://localhost:8080/mine
+
+###
+
+# ------------------------------------------------------------------------------ do a normal transaction
+# 6 create a second account we'll send funds to
+# (!) IMPORTANT: grab the account address from the returned api output
 POST http://localhost:8080/transact
 Content-Type: application/json
 
 {
-  "value": 222,
-  "to": "03464c2df6d27a35dee160ab697eaeef060b79688998e4116f6f00b95fb82447f7"
+  "value": 0,
+  "code": [],
+  "gas_limit": 100
 }
 
 ###
 
-GET http://localhost:8080/balance/034e69aec55aa5796023ce324656a97e64e4046925a757eaec5660f932775769bd
+# 7 mine again
+GET http://localhost:8080/mine
 
 ###
 
+# 8 send a transaction from miner's account to the newly created one
+# (!) IMPORTANT: replace the "to" field with account address returned from step 6
+POST http://localhost:8080/transact
+Content-Type: application/json
+
+{
+  "value": 123,
+  "to": "03e7340a90f3e4b425515b761a5b5196d3fbf2e62474bd71a90e9984003dcab763",
+  "code": [],
+  "gas_limit": 100
+}
+
+###
+
+# 9 mine again
 GET http://localhost:8080/mine
+
+###
+
+# 10 check recepient's balance (should be 1000+123)
+# (!) IMPORTANT: replace the "to" field with account address returned from step 6
+GET http://localhost:8080/balance/03e7340a90f3e4b425515b761a5b5196d3fbf2e62474bd71a90e9984003dcab763
+
+###
+
+# ------------------------------------------------------------------------------ smart contracts
+# 11 create a smart contract account ("code" field is not empty, while "to" field is missing)
+# (!) IMPORTANT: grab the account address from the returned api output
+POST http://localhost:8080/transact
+Content-Type: application/json
+
+{
+  "value": 0,
+  "code": ["PUSH",{"VAL":1},"PUSH",{"VAL":2},"ADD","PUSH",{"VAL": 123},"STORE","STOP"],
+  "gas_limit": 100
+}
+
+###
+
+# 12 mine again
+GET http://localhost:8080/mine
+
+###
+
+# 13 send a tx to interact with the smart contact
+# (!) IMPORTANT: replace the "to" field with account address returned from step 6
+POST http://localhost:8080/transact
+Content-Type: application/json
+
+{
+  "value": 0,
+  "to": "027ad52856cbbf5ae380680e0fb1a66529ae7e9f8671f2b0a6c7ab5f982c2d2ec1",
+  "code": [],
+  "gas_limit": 100
+}
+
+###
+
+# 14 mine again
+GET http://localhost:8080/mine
+
+###
+
+# 15 check the storage trie - we should see that under the recepient's account, under key 123 a value 3 is now stored!
+GET http://localhost:8080/storage_trie

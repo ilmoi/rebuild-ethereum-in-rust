@@ -1,10 +1,10 @@
 const Trie = require('./trie');
 
 class State {
-  // constructor() {
-  //   this.stateTrie = new Trie();
+  constructor() {
+    this.stateTrie = new Trie();
     this.storageTrieMap = {};
-  // }
+  }
 
   putAccount({ address, accountData }) {
     if (!this.storageTrieMap[address]) {
@@ -20,9 +20,9 @@ class State {
     });
   }
 
-  // getAccount({ address }) {
-  //   return this.stateTrie.get({ key: address });
-  // }
+  getAccount({ address }) {
+    return this.stateTrie.get({ key: address });
+  }
 
   getStateRoot() {
     return this.stateTrie.rootHash;

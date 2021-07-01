@@ -13,7 +13,7 @@ use std::sync::{Arc, Mutex};
 pub async fn rabbit_connect() -> Result<Connection> {
     let addr = std::env::var("AMQP_ADDR").unwrap_or_else(|_| "amqp://127.0.0.1:5672/%2f".into());
     let conn = Connection::connect(&addr, ConnectionProperties::default()).await?;
-    println!("connected!");
+    println!("connected to RabbitMQ!");
 
     Ok(conn)
 }
@@ -110,11 +110,20 @@ pub fn process_block(block: String, global_state: Arc<Mutex<GlobalState>>) {
     let mut tx_queue = &mut global_state.tx_queue;
     let mut blockchain = &mut global_state.blockchain;
 
-    blockchain.add_block(block_object, tx_queue);
+    if blockchain.add_block(block_object.clone(), tx_queue) {
+        println!(
+            "Successfully inserted the new block #{} into the blockchain.",
+            block_object.block_headers.truncated_block_headers.number
+        );
+    } else {
+        println!(
+            "Failed to insert block #{}",
+            block_object.block_headers.truncated_block_headers.number
+        );
+    }
 }
 
 pub fn process_transaction(transaction: String, global_state: Arc<Mutex<GlobalState>>) {
-    println!("received tx: {:?}", transaction);
     let tx_object: Transaction = serde_json::from_str(&transaction).unwrap();
     println!("deserialized tx: {:?}", tx_object);
 
@@ -123,4 +132,8 @@ pub fn process_transaction(transaction: String, global_state: Arc<Mutex<GlobalSt
     let mut tx_queue = &mut global_state.tx_queue;
 
     tx_queue.add(tx_object);
+    println!(
+        "Successfully inserted the tx into global tx queue. Queue state: {:?}",
+        tx_queue
+    );
 }

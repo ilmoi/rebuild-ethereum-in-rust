@@ -1,12 +1,15 @@
 use crate::account::Account;
 use crate::blockchain::block::U256;
 use crate::blockchain::blockchain::Blockchain;
+use crate::interpreter::OPCODE;
 use crate::store::state::State;
 use crate::transaction::tx::Transaction;
 use crate::transaction::tx_queue::TransactionQueue;
 use itertools::Itertools;
+use secp256k1::{PublicKey, SecretKey};
 use serde::{Deserialize, Serialize};
 use sha3::{Digest, Keccak256};
+use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -17,13 +20,22 @@ pub struct GlobalState {
 }
 
 pub fn prep_state() -> GlobalState {
+    let code = vec![
+        OPCODE::PUSH,
+        OPCODE::VAL(10),
+        OPCODE::PUSH,
+        OPCODE::VAL(5),
+        OPCODE::ADD,
+        OPCODE::STOP,
+    ];
+
     println!("MINER ACCOUNT: ");
     let miner_account = Account::new(vec![]);
-    println!("SECOND TEST ACCOUNT: ");
-    let second_test_account = Account::new(vec![]);
+    println!("SMART CONTRACT ACCOUNT: ");
+    let sc_account = Account::new(code);
 
-    let tx = Transaction::create_transaction(Some(miner_account.clone()), None, 0, None);
-    let tx2 = Transaction::create_transaction(Some(second_test_account), None, 0, None);
+    let tx = Transaction::create_transaction(Some(miner_account.clone()), None, 0, None, 100);
+    let tx2 = Transaction::create_transaction(Some(sc_account), None, 0, None, 100);
 
     let mut global_state = GlobalState {
         blockchain: Blockchain::new(State::new()),
@@ -45,6 +57,8 @@ where
     s.chars().sorted().rev().collect::<String>()
 }
 
+/// Note we're specifically using keccak256 not sha3
+/// read about the difference here - https://www.oreilly.com/library/view/mastering-ethereum/9781491971932/ch04.html (under cryptographic hash functions header)
 pub fn keccak_hash<T>(data: &T) -> String
 where
     T: ?Sized + Serialize,
